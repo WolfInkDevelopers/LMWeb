@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmolLM2 Local WebGPU Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4B5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+        .chat-container { aspect-ratio: 16/9; max-height: 100vh; }
+        @media (max-width: 768px) { .chat-container { aspect-ratio: auto; height: 100dvh; } }
+        .markdown-body p { margin-bottom: 0.75em; }
+        .markdown-body pre { background: #1f2937; padding: 1em; border-radius: 0.5em; overflow-x: auto; margin-bottom: 0.75em; }
+        .markdown-body code { font-family: monospace; color: #34d399; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 h-screen w-screen flex items-center justify-center p-0 md:p-4 font-sans">
+
+    <div class="chat-container w-full max-w-7xl bg-gray-900 shadow-2xl md:rounded-2xl flex flex-col md:flex-row overflow-hidden border border-gray-800">
+        
+        <!-- Sidebar lateral -->
+        <div class="w-full md:w-80 bg-gray-800 border-b md:border-b-0 md:border-r border-gray-700 flex flex-col">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent flex items-center gap-2">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    SmolLM2 Local
+                </h1>
+                <p class="text-xs text-gray-400 mt-2">IA 100% en tu navegador (WebGPU)</p>
+            </div>
+
+            <div class="px-6 pb-6 flex-1 flex flex-col gap-4">
+                <label class="text-sm font-semibold text-gray-300">Selecciona un modelo:</label>
+                <select id="model-select" class="w-full bg-gray-900 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none transition-colors">
+                    <option value="HuggingFaceTB/SmolLM2-135M-Instruct">SmolLM2 135M (Muy Rápido - Bajo RAM)</option>
+                    <option value="HuggingFaceTB/SmolLM2-360M-Instruct" selected>SmolLM2 360M (Equilibrado)</option>
+                    <option value="HuggingFaceTB/SmolLM2-1.7B-Instruct">SmolLM2 1.7B (Mejor Calidad - Alto RAM)</option>
+                </select>
+
+                <button id="load-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm px-5 py-3 transition-colors flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Cargar Modelo
+                </button>
+
+                <div id="progress-container" class="hidden flex-col gap-2 mt-4">
+                    <div class="flex justify-between text-xs text-gray-400">
+                        <span id="progress-text">Descargando...</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div id="progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="mt-auto">
+                    <button id="new-chat-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg text-sm px-5 py-2.5 transition-colors hidden">
+                        Limpiar Chat
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área del Chat -->
+        <div class="flex-1 flex flex-col bg-gray-950 relative">
+            <div id="chat-box" class="flex-1 p-4 md:p-6 overflow-y-auto flex flex-col gap-4 scroll-smooth">
+                <div class="flex gap-4 items-start">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-lg">IA</div>
+                    <div class="bg-gray-800 rounded-2xl rounded-tl-none px-5 py-3 text-sm text-gray-200 max-w-[85%] shadow-md">
+                        ¡Hola! Selecciona un modelo a la izquierda y presiona "Cargar Modelo". Una vez descargado, procesaré todo localmente en tu dispositivo usando WebGPU o CPU.
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-900 border-t border-gray-800">
+                <form id="chat-form" class="relative flex items-center max-w-4xl mx-auto">
+                    <input type="text" id="user-input" disabled placeholder="Escribe un mensaje... (Carga un modelo primero)" class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-full focus:ring-blue-500 focus:border-blue-500 block pl-6 pr-14 py-3.5 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner">
+                    <button type="submit" id="send-btn" disabled class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <svg class="w-5 h-5 translate-x-[1px] translate-y-[1px]" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const workerCode = `
+            import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js';
+            
+            env.allowLocalModels = false;
+            
+            // CONFIGURACIÓN CRÍTICA: Desactivar proxy para evitar el bug de conversión de tensores
+            env.backends.onnx.wasm.proxy = false;
+
+            let generator = null;
+
+            self.onmessage = async (event) => {
+                const data = event.data;
+
+                if (data.type === 'load') {
+                    try {
+                        if (generator) {
+                            await generator.dispose();
+                            generator = null;
+                        }
+
+                        // Intento Multinivel (Fallback inteligente de hardware)
+                        try {
+                            self.postMessage({ type: 'status', message: 'Inicializando WebGPU (FP16)...' });
+                            generator = await pipeline('text-generation', data.model, {
+                                device: 'webgpu', 
+                                dtype: 'q4f16',
+                                progress_callback: (progressInfo) => {
+                                    self.postMessage({ type: 'progress', data: progressInfo });
+                                }
+                            });
+                            self.postMessage({ type: 'ready', device: 'WebGPU (Aceleración FP16)' });
+                        } catch (errorFP16) {
+                            console.warn("FP16 no soportado o error de compilación. Probando WebGPU estándar...", errorFP16);
+                            try {
+                                self.postMessage({ type: 'status', message: 'Inicializando WebGPU estándar...' });
+                                generator = await pipeline('text-generation', data.model, {
+                                    device: 'webgpu', 
+                                    dtype: 'q4',
+                                    progress_callback: (progressInfo) => {
+                                        self.postMessage({ type: 'progress', data: progressInfo });
+                                    }
+                                });
+                                self.postMessage({ type: 'ready', device: 'WebGPU (Estándar FP32)' });
+                            } catch (errorWebGPU) {
+                                console.warn("WebGPU no disponible. Redirigiendo a WebAssembly (CPU)...", errorWebGPU);
+                                self.postMessage({ type: 'status', message: 'WebGPU ausente. Inicializando en CPU (WASM)...' });
+                                generator = await pipeline('text-generation', data.model, {
+                                    device: 'wasm', 
+                                    dtype: 'q8',
+                                    progress_callback: (progressInfo) => {
+                                        self.postMessage({ type: 'progress', data: progressInfo });
+                                    }
+                                });
+                                self.postMessage({ type: 'ready', device: 'CPU (WebAssembly - Ejecución Local)' });
+                            }
+                        }
+                    } catch (error) {
+                        self.postMessage({ type: 'error', message: error.message });
+                    }
+                } else if (data.type === 'generate') {
+                    try {
+                        const prompt = generator.tokenizer.apply_chat_template(data.messages, {
+                            tokenize: false,
+                            add_generation_prompt: true
+                        });
+
+                        const streamer = new TextStreamer(generator.tokenizer, {
+                            skip_prompt: true,
+                            skip_special_tokens: true,
+                            callback_function: (text) => {
+                                self.postMessage({ type: 'update', text: text });
+                            }
+                        });
+                        
+                        await generator(prompt, {
+                            max_new_tokens: 1024,
+                            temperature: 0.7,
+                            top_p: 0.9,
+                            repetition_penalty: 1.1,
+                            do_sample: true,
+                            streamer: streamer
+                        });
+
+                        self.postMessage({ type: 'complete' });
+                    } catch (error) {
+                        self.postMessage({ type: 'error', message: error.message });
+                    }
+                }
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl, { type: 'module' });
+
+        const ui = {
+            chatBox: document.getElementById('chat-box'),
+            form: document.getElementById('chat-form'),
+            input: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-btn'),
+            loadBtn: document.getElementById('load-btn'),
+            modelSelect: document.getElementById('model-select'),
+            progressContainer: document.getElementById('progress-container'),
+            progressBar: document.getElementById('progress-bar'),
+            progressText: document.getElementById('progress-text'),
+            progressPercent: document.getElementById('progress-percent'),
+            newChatBtn: document.getElementById('new-chat-btn')
+        };
+
+        let messages = []; 
+        let currentBotMessageDiv = null;
+        let currentMarkdownText = "";
+        let isModelLoaded = false;
+        let isGenerating = false;
+
+        const downloadProgress = new Map();
+
+        ui.loadBtn.addEventListener('click', () => {
+            const selectedModel = ui.modelSelect.value;
+            ui.loadBtn.disabled = true;
+            ui.modelSelect.disabled = true;
+            ui.loadBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Inicializando...`;
+            ui.progressContainer.classList.remove('hidden');
+            downloadProgress.clear();
+            
+            worker.postMessage({ type: 'load', model: selectedModel });
+        });
+
+        ui.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!isModelLoaded || isGenerating) return;
+
+            const text = ui.input.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            messages.push({ role: 'user', content: text });
+            
+            ui.input.value = '';
+            ui.input.disabled = true;
+            ui.sendBtn.disabled = true;
+            isGenerating = true;
+
+            currentBotMessageDiv = appendMessage('bot', '');
+            currentMarkdownText = "";
+
+            worker.postMessage({ type: 'generate', messages: messages });
+        });
+
+        ui.newChatBtn.addEventListener('click', () => {
+            messages = [];
+            ui.chatBox.innerHTML = '';
+            appendMessage('bot', 'El historial ha sido borrado. ¿De qué quieres hablar?');
+        });
+
+        worker.addEventListener('message', (e) => {
+            const data = e.data;
+
+            if (data.type === 'status') {
+                ui.progressText.textContent = data.message;
+            }
+            else if (data.type === 'progress') {
+                const file = data.data;
+                if (file.status === 'progress' || file.status === 'init') {
+                    downloadProgress.set(file.file, file);
+                    
+                    let loaded = 0, total = 0;
+                    downloadProgress.forEach(p => {
+                        if (p.total) {
+                            loaded += p.loaded;
+                            total += p.total;
+                        }
+                    });
+                    
+                    if (total > 0) {
+                        const percent = Math.min(100, Math.round((loaded / total) * 100));
+                        ui.progressBar.style.width = percent + '%';
+                        ui.progressPercent.textContent = percent + '%';
+                        ui.progressText.textContent = `Descargando componentes del modelo...`;
+                    }
+                } else if (file.status === 'ready') {
+                    ui.progressText.textContent = `Guardando en caché del navegador...`;
+                }
+            }
+            else if (data.type === 'ready') {
+                isModelLoaded = true;
+                ui.loadBtn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Modelo Listo`;
+                ui.loadBtn.classList.replace('bg-blue-600', 'bg-green-600');
+                ui.loadBtn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+                ui.progressContainer.classList.add('hidden');
+                ui.input.disabled = false;
+                ui.sendBtn.disabled = false;
+                ui.input.placeholder = "Escribe un mensaje...";
+                ui.newChatBtn.classList.remove('hidden');
+                
+                appendMessage('bot', `¡Modelo cargado con éxito! Ejecutándose localmente en: **${data.device}**.`);
+            }
+            else if (data.type === 'update') {
+                currentMarkdownText += data.text;
+                currentBotMessageDiv.innerHTML = marked.parse(currentMarkdownText);
+                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
+            }
+            else if (data.type === 'complete') {
+                messages.push({ role: 'assistant', content: currentMarkdownText });
+                isGenerating = false;
+                ui.input.disabled = false;
+                ui.sendBtn.disabled = false;
+                ui.input.focus();
+            }
+            else if (data.type === 'error') {
+                isGenerating = false;
+                ui.input.disabled = !isModelLoaded;
+                ui.sendBtn.disabled = !isModelLoaded;
+                appendMessage('bot', `**Error:** ${data.message}.`);
+            }
+        });
+
+        function appendMessage(role, text) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex gap-4 items-start ${role === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-lg ${role === 'user' ? 'bg-teal-500' : 'bg-blue-600'}`;
+            avatar.textContent = role === 'user' ? 'Tú' : 'IA';
+            
+            const bubble = document.createElement('div');
+            bubble.className = `markdown-body rounded-2xl px-5 py-3 text-sm max-w-[85%] shadow-md ${
+                role === 'user' 
+                ? 'bg-teal-600 text-white rounded-tr-none' 
+                : 'bg-gray-800 text-gray-200 rounded-tl-none'
+            }`;
+            
+            if (role === 'user') {
+                bubble.textContent = text; 
+            } else {
+                bubble.innerHTML = marked.parse(text); 
+            }
+
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(bubble);
+            ui.chatBox.appendChild(wrapper);
+            ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
+
+            return bubble;
+        }
+    </script>
+</body>
+</html>
