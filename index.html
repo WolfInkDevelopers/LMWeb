@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quiet AI — Local & P2P WebGPU Chat</title>
+    <title>Quiet AI — Local WebGPU Chat</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Marked.js para renderizar Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- PeerJS para conexiones WebRTC P2P -->
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -30,11 +28,11 @@
         <!-- Sidebar lateral con configuración -->
         <div class="w-full md:w-80 bg-[#121915] border-b md:border-b-0 md:border-r border-[#1a2420] flex flex-col overflow-y-auto">
             <div class="p-6 border-b border-[#1a2420]">
-                <span class="text-[10px] uppercase tracking-widest text-[#528c6e] font-semibold">The future of quiet banking</span>
+                <span class="text-[10px] uppercase tracking-widest text-[#528c6e] font-semibold">Quiet Personal AI Assistant</span>
                 <h1 class="text-2xl font-serif text-stone-100 mt-1 flex items-center gap-2">
                     Quiet AI
                 </h1>
-                <p class="text-[11px] text-[#41594d] mt-1">Clúster de pre-procesamiento paralelo</p>
+                <p class="text-[11px] text-[#41594d] mt-1">Inferencia Local Optimizada</p>
             </div>
 
             <div class="p-6 flex flex-col gap-6 flex-1">
@@ -62,10 +60,10 @@
                 <div class="flex flex-col gap-3">
                     <div class="flex justify-between items-center">
                         <label class="text-xs font-semibold tracking-wider uppercase text-stone-400">Temperatura</label>
-                        <span id="temp-val" class="text-xs text-[#528c6e] font-mono">0.7</span>
+                        <span id="temp-val" class="text-xs text-[#528c6e] font-mono">0.0</span>
                     </div>
-                    <input type="range" id="temp-slider" min="0.0" max="1.2" step="0.1" value="0.7" class="w-full h-1 bg-[#0a0e0c] rounded-lg appearance-none cursor-pointer accent-[#375e4a]">
-                    <span class="text-[10px] text-stone-500 leading-tight">0.0 desactiva muestreo estadístico (Greedy Decoding) acelerando la velocidad local.</span>
+                    <input type="range" id="temp-slider" min="0.0" max="1.2" step="0.1" value="0.0" class="w-full h-1 bg-[#0a0e0c] rounded-lg appearance-none cursor-pointer accent-[#375e4a]">
+                    <span class="text-[10px] text-stone-500 leading-tight">0.0 desactiva el muestreo estadístico (Greedy Decoding) reduciendo el tiempo de generación.</span>
                 </div>
 
                 <!-- Inicializar / Estado local -->
@@ -84,37 +82,6 @@
                     </div>
                 </div>
 
-                <!-- Panel de Red por Relevo P2P -->
-                <div class="border-t border-[#1a2420] pt-6 flex flex-col gap-4">
-                    <label class="text-xs font-semibold tracking-wider uppercase text-stone-400 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Clúster de Cómputo P2P
-                    </label>
-                    
-                    <!-- Mi ID de dispositivo -->
-                    <div class="flex flex-col gap-1 bg-[#0a0e0c] p-3 rounded-lg border border-[#1a2420]">
-                        <span class="text-[10px] text-stone-500">Mi ID de Dispositivo:</span>
-                        <div class="flex items-center justify-between mt-1">
-                            <span id="my-peer-id" class="text-xs font-mono text-[#528c6e]">Generando ID...</span>
-                            <button id="copy-peer-btn" class="text-[10px] text-stone-400 hover:text-stone-200">Copiar</button>
-                        </div>
-                    </div>
-
-                    <!-- Entrada para conectar a un nodo -->
-                    <div class="flex gap-2">
-                        <input type="text" id="connect-peer-id" placeholder="ID del Colaborador" class="flex-1 bg-[#0a0e0c] border border-[#223029] text-stone-200 text-xs rounded-lg px-3 py-2 outline-none">
-                        <button id="connect-btn" class="bg-[#1c2421] hover:bg-[#25302c] text-stone-200 text-xs px-3 py-2 rounded-lg transition-colors">Vincular</button>
-                    </div>
-
-                    <!-- Lista de dispositivos conectados -->
-                    <div class="flex flex-col gap-2">
-                        <span class="text-[10px] text-stone-400 uppercase tracking-wider">Aceleradores en Clúster:</span>
-                        <div id="peers-list" class="flex flex-col gap-1.5">
-                            <span class="text-[11px] text-stone-500 italic">Ningún acelerador vinculado aún.</span>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="mt-auto pt-4 border-t border-[#1a2420]">
                     <button id="new-chat-btn" class="w-full bg-[#151c19] hover:bg-[#1a2420] text-stone-300 font-medium rounded-lg text-xs px-4 py-2 transition-colors hidden">
                         Limpiar Historial
@@ -129,25 +96,15 @@
                 <div class="flex gap-4 items-start max-w-4xl">
                     <div class="w-8 h-8 rounded-full bg-[#243d30] flex items-center justify-center flex-shrink-0 text-xs font-serif text-stone-100 shadow-md">Q</div>
                     <div class="bg-[#121915] rounded-2xl rounded-tl-none px-5 py-3.5 text-sm text-stone-300 max-w-[85%] shadow-md border border-[#1a2420]/50 leading-relaxed">
-                        Bienvenido a <strong>Quiet AI (Modo Clúster Paralelo)</strong>. 
+                        Bienvenido a <strong>Quiet AI (Inferencia Local Optimizada)</strong>. 
                         <br><br>
-                        Para comenzar, carga un modelo local. Para habilitar la aceleración real por clúster, vincula otros dispositivos en la barra lateral. 
-                        Al enviar una consulta, todos los nodos calcularán partes del texto de forma **simultánea en segundo plano**, reduciendo el tiempo de espera general a una fracción.
+                        Para comenzar, carga un modelo local. Este motor de inferencia ha sido optimizado para exprimir el rendimiento de tu hardware mediante aceleración WebGPU de bajo nivel y optimizaciones de grafo de ONNX Runtime, ofreciendo generación de texto privada sin depender de servidores.
                     </div>
                 </div>
             </div>
 
             <!-- Área de entrada de mensajes -->
             <div class="p-4 bg-[#0e1310] border-t border-[#1a2420]">
-                <!-- Monitor de estado de Clúster -->
-                <div id="cluster-monitor" class="hidden max-w-4xl mx-auto mb-3 flex flex-wrap gap-2 items-center justify-start text-[10px] text-stone-400 bg-[#121915] p-2 rounded-lg border border-[#1a2420]">
-                    <span class="font-semibold uppercase tracking-wider text-stone-500 mr-2">Estado del Clúster:</span>
-                    <div id="monitor-local" class="flex items-center gap-1.5 px-2 py-0.5 bg-[#1a2420] rounded border border-[#2d4d3c]/30">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>Local: Listo</span>
-                    </div>
-                </div>
-                
                 <form id="chat-form" class="relative flex items-center max-w-4xl mx-auto">
                     <input type="text" id="user-input" disabled placeholder="Carga un modelo para habilitar la interfaz..." class="w-full bg-[#121a16] border border-[#223029] text-stone-100 text-sm rounded-full focus:ring-[#243d30] focus:border-[#243d30] block pl-6 pr-14 py-3.5 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner">
                     <button type="submit" id="send-btn" disabled class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 rounded-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg">
@@ -158,7 +115,7 @@
         </div>
     </div>
 
-    <!-- Script del Motor de Inferencia y de Red -->
+    <!-- Script del Motor de Inferencia -->
     <script>
         const workerCode = `
             import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js';
@@ -182,16 +139,24 @@
                             generator = null;
                         }
 
+                        // CONFIGURACIONES INTERNAS DE ONNX RUNTIME PARA ACELERACIÓN
+                        const optimizedSessionOptions = {
+                            graphOptimizationLevel: 'all',  // Fusión masiva de operadores adyacentes del Transformer
+                            enableCpuMemArena: true,        // Reutilización estática de memoria en la CPU/WASM
+                            enableMemPattern: true          // Planificación óptima de asignación de búferes
+                        };
+
                         try {
-                            self.postMessage({ type: 'status', message: 'Inicializando WebGPU (FP16)...' });
+                            self.postMessage({ type: 'status', message: 'Inicializando WebGPU (FP16 optimizado)...' });
                             generator = await pipeline('text-generation', data.model, {
                                 device: 'webgpu', 
-                                dtype: 'q4f16',
+                                dtype: 'q4f16', // Ejecución en precisión flotante media (FP16 nativo en GPU)
                                 progress_callback: (progressInfo) => {
                                     self.postMessage({ type: 'progress', data: progressInfo });
-                                }
+                                },
+                                session_options: optimizedSessionOptions
                             });
-                            self.postMessage({ type: 'ready', device: 'WebGPU (FP16)' });
+                            self.postMessage({ type: 'ready', device: 'WebGPU (FP16 optimizado)' });
                         } catch (e1) {
                             try {
                                 self.postMessage({ type: 'status', message: 'Inicializando WebGPU estándar...' });
@@ -200,9 +165,10 @@
                                     dtype: 'q4',
                                     progress_callback: (progressInfo) => {
                                         self.postMessage({ type: 'progress', data: progressInfo });
-                                    }
+                                    },
+                                    session_options: optimizedSessionOptions
                                 });
-                                self.postMessage({ type: 'ready', device: 'WebGPU (Estándar FP32)' });
+                                self.postMessage({ type: 'ready', device: 'WebGPU (Estándar FP32 optimizado)' });
                             } catch (e2) {
                                 self.postMessage({ type: 'status', message: 'Inicializando en CPU (WASM)...' });
                                 generator = await pipeline('text-generation', data.model, {
@@ -210,9 +176,10 @@
                                     dtype: 'q8',
                                     progress_callback: (progressInfo) => {
                                         self.postMessage({ type: 'progress', data: progressInfo });
-                                    }
+                                    },
+                                    session_options: optimizedSessionOptions
                                 });
-                                self.postMessage({ type: 'ready', device: 'CPU (WebAssembly q8)' });
+                                self.postMessage({ type: 'ready', device: 'CPU (WebAssembly q8 optimizado)' });
                             }
                         }
                     } catch (error) {
@@ -240,7 +207,8 @@
                             temperature: data.temperature,
                             top_p: useSampling ? 0.9 : undefined,
                             do_sample: useSampling,
-                            repetition_penalty: 1.1,
+                            // Evitamos la sobrecarga de logits si el muestreo está desactivado (Greedy decoding)
+                            repetition_penalty: useSampling ? 1.1 : 1.0,
                             streamer: streamer
                         });
 
@@ -269,14 +237,7 @@
             progressPercent: document.getElementById('progress-percent'),
             newChatBtn: document.getElementById('new-chat-btn'),
             tempSlider: document.getElementById('temp-slider'),
-            tempVal: document.getElementById('temp-val'),
-            myPeerId: document.getElementById('my-peer-id'),
-            connectPeerId: document.getElementById('connect-peer-id'),
-            connectBtn: document.getElementById('connect-btn'),
-            peersList: document.getElementById('peers-list'),
-            copyPeerBtn: document.getElementById('copy-peer-btn'),
-            clusterMonitor: document.getElementById('cluster-monitor'),
-            monitorLocal: document.getElementById('monitor-local')
+            tempVal: document.getElementById('temp-val')
         };
 
         let messages = []; 
@@ -285,149 +246,9 @@
         let activeModelName = "";
         const downloadProgress = new Map();
 
-        // Variables de flujo de la burbuja activa
         let currentBotMessageDiv = null;
         let currentPipelineBadge = null;
 
-        // --- SISTEMA PEER-TO-PEER (P2P) ---
-        let peer = null;
-        let connections = []; 
-
-        function initP2P() {
-            peer = new Peer({ debug: 1 });
-            peer.on('open', (id) => { ui.myPeerId.textContent = id; });
-            peer.on('connection', (conn) => {
-                if (connections.length >= 4) { conn.close(); return; }
-                setupConnection(conn);
-            });
-        }
-
-        function setupConnection(conn) {
-            conn.on('open', () => {
-                if (!connections.find(c => c.peer === conn.peer)) {
-                    connections.push(conn);
-                    updatePeersUI();
-                    addMonitorNode(conn.peer);
-                }
-            });
-
-            // Recibir peticiones de pre-procesamiento paralelo
-            conn.on('data', async (data) => {
-                if (data.type === 'pipeline-chunk') {
-                    if (!isModelLoaded) {
-                        conn.send({ type: 'chunk-error', message: 'Carga el modelo local en este dispositivo.', targetId: data.targetId });
-                        return;
-                    }
-                    
-                    const tempChannelId = Math.random().toString(36).substring(7);
-                    
-                    worker.postMessage({
-                        type: 'generate',
-                        messages: data.messages,
-                        temperature: data.temperature,
-                        max_new_tokens: data.max_new_tokens,
-                        taskIndex: tempChannelId
-                    });
-
-                    const messageHandler = (e) => {
-                        const d = e.data;
-                        if (d.taskIndex === tempChannelId) {
-                            if (d.type === 'update') {
-                                conn.send({ type: 'chunk-update', text: d.text, targetId: data.targetId });
-                            } else if (d.type === 'complete') {
-                                conn.send({ type: 'chunk-complete', targetId: data.targetId });
-                                worker.removeEventListener('message', messageHandler);
-                            } else if (d.type === 'error') {
-                                conn.send({ type: 'chunk-error', message: d.message, targetId: data.targetId });
-                                worker.removeEventListener('message', messageHandler);
-                            }
-                        }
-                    };
-                    worker.addEventListener('message', messageHandler);
-                }
-            });
-
-            conn.on('close', () => { 
-                removeMonitorNode(conn.peer);
-                connections = connections.filter(c => c.peer !== conn.peer); 
-                updatePeersUI(); 
-            });
-            conn.on('error', () => { 
-                removeMonitorNode(conn.peer);
-                connections = connections.filter(c => c.peer !== conn.peer); 
-                updatePeersUI(); 
-            });
-        }
-
-        function updatePeersUI() {
-            ui.peersList.innerHTML = '';
-            if (connections.length === 0) {
-                ui.peersList.innerHTML = `<span class="text-[11px] text-stone-500 italic">Ningún acelerador vinculado aún.</span>`;
-                return;
-            }
-            connections.forEach((conn, index) => {
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between bg-[#0a0e0c] px-3 py-1.5 rounded border border-[#1a2420] text-xs text-stone-300';
-                item.innerHTML = `
-                    <span class="font-mono">Acelerador #${index + 1} (${conn.peer.substring(0, 8)}...)</span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                `;
-                ui.peersList.appendChild(item);
-            });
-        }
-
-        function addMonitorNode(peerId) {
-            const shortId = peerId.substring(0,6);
-            const div = document.createElement('div');
-            div.id = `mon-node-${peerId}`;
-            div.className = "flex items-center gap-1.5 px-2 py-0.5 bg-[#141a17] rounded border border-[#223029]/50 transition-colors duration-200";
-            div.innerHTML = `
-                <span class="status-indicator w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                <span>Acelerador (${shortId}): Esperando</span>
-            `;
-            ui.clusterMonitor.appendChild(div);
-            ui.clusterMonitor.classList.remove('hidden');
-        }
-
-        function removeMonitorNode(peerId) {
-            const element = document.getElementById(`mon-node-${peerId}`);
-            if (element) element.remove();
-            if (connections.length === 0) ui.clusterMonitor.classList.add('hidden');
-        }
-
-        function updateMonitorState(nodeId, state, label) {
-            const nodeEl = (nodeId === 'local') ? ui.monitorLocal : document.getElementById(`mon-node-${nodeId}`);
-            if (nodeEl) {
-                const indicator = nodeEl.querySelector('.status-indicator') || nodeEl.querySelector('span:first-child');
-                const text = nodeEl.querySelector('span:last-child');
-                
-                if (state === 'active') {
-                    indicator.className = "status-indicator w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
-                } else if (state === 'buffered') {
-                    indicator.className = "status-indicator w-1.5 h-1.5 rounded-full bg-blue-400";
-                } else {
-                    indicator.className = "status-indicator w-1.5 h-1.5 rounded-full bg-stone-600";
-                }
-                text.textContent = label;
-            }
-        }
-
-        ui.connectBtn.addEventListener('click', () => {
-            const targetId = ui.connectPeerId.value.trim();
-            if (!targetId) return;
-            if (connections.length >= 4) { alert('Límite de 4 conexiones simultáneas alcanzado.'); return; }
-            const conn = peer.connect(targetId);
-            setupConnection(conn);
-            ui.connectPeerId.value = '';
-        });
-
-        ui.copyPeerBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(ui.myPeerId.textContent);
-            ui.copyPeerBtn.textContent = '¡Copiado!';
-            setTimeout(() => ui.copyPeerBtn.textContent = 'Copiar', 2000);
-        });
-
-        // --- SISTEMA DE INFERENCIA EN CLÚSTER EN PARALELO ---
         ui.tempSlider.addEventListener('input', (e) => {
             ui.tempVal.textContent = parseFloat(e.target.value).toFixed(1);
         });
@@ -469,183 +290,37 @@
 
             const tempValue = parseFloat(ui.tempSlider.value);
 
-            if (connections.length === 0) {
-                // MODO LOCAL INDIVIDUAL (Un solo flujo tradicional)
-                let currentMarkdownText = "";
-                messages.push({ role: 'user', content: text });
-                updatePipelineBadge("Procesando: Dispositivo Local");
-                updateMonitorState('local', 'active', 'Local: Computando');
+            let currentMarkdownText = "";
+            messages.push({ role: 'user', content: text });
+            updatePipelineBadge("Procesando: Dispositivo Local");
 
-                const localHandler = (e) => {
-                    const d = e.data;
-                    if (d.taskIndex === 'local-sole') {
-                        if (d.type === 'update') {
-                            currentMarkdownText += d.text;
-                            currentBotMessageDiv.innerHTML = marked.parse(currentMarkdownText);
-                            smartScroll();
-                        } else if (d.type === 'complete') {
-                            messages.push({ role: 'assistant', content: currentMarkdownText });
-                            isGenerating = false;
-                            ui.input.disabled = false;
-                            ui.sendBtn.disabled = false;
-                            ui.input.focus();
-                            updatePipelineBadge("Completado");
-                            updateMonitorState('local', 'ready', 'Local: Listo');
-                            worker.removeEventListener('message', localHandler);
-                        }
-                    }
-                };
-                worker.addEventListener('message', localHandler);
-
-                worker.postMessage({ 
-                    type: 'generate', 
-                    messages: messages,
-                    temperature: tempValue,
-                    max_new_tokens: 512,
-                    taskIndex: 'local-sole'
-                });
-            } else {
-                // MODO CLÚSTER PARALELO (Prefetching distribuido por bloques)
-                // Se disparan todos los dispositivos AL MISMO TIEMPO. No hay esperas.
-                let accumulatedText = "";
-                
-                // Mapeo semántico del prompt para distribuir el procesamiento en paralelo
-                const promptsParaNodos = [
-                    { id: 'local', context: text + " Provee la respuesta central, introducción y conceptos clave con detalle." },
-                    { id: 'peer-0', context: text + " Provee un desglose práctico e implementación técnica secuencial detallada." },
-                    { id: 'peer-1', context: text + " Provee ejemplos concretos de código, analogías o demostraciones aplicadas." },
-                    { id: 'peer-2', context: text + " Provee una sección crítica con limitaciones, contras, riesgos y medidas de seguridad." },
-                    { id: 'peer-3', context: text + " Provee las conclusiones estratégicas, pasos de acción recomendados y resumen." }
-                ];
-
-                const totalBlocks = 1 + connections.length;
-                let activeBuffers = {}; // Buffer de texto almacenado en memoria de cada nodo
-                let completedNodes = {}; // Nodos que ya terminaron su cómputo
-                let currentRenderingBlock = 0; // El bloque que se está imprimiendo actualmente en pantalla
-
-                // Inicializar estados
-                activeBuffers['local'] = "";
-                completedNodes['local'] = false;
-                updateMonitorState('local', 'active', 'Local: Computando Bloque 1');
-
-                connections.forEach((conn, index) => {
-                    const pId = conn.peer;
-                    activeBuffers[pId] = "";
-                    completedNodes[pId] = false;
-                    updateMonitorState(pId, 'active', `Acelerador ${index+1}: Pre-calculando Bloque ${index+2}`);
-                });
-
-                // Función que unifica los buffers de los nodos y los inyecta fluidamente en la pantalla secuencialmente
-                const streamUnifiedResult = () => {
-                    if (currentRenderingBlock >= totalBlocks) {
-                        // Inferencia colectiva finalizada
+            const localHandler = (e) => {
+                const d = e.data;
+                if (d.taskIndex === 'local-sole') {
+                    if (d.type === 'update') {
+                        currentMarkdownText += d.text;
+                        currentBotMessageDiv.innerHTML = marked.parse(currentMarkdownText);
+                        smartScroll();
+                    } else if (d.type === 'complete') {
+                        messages.push({ role: 'assistant', content: currentMarkdownText });
                         isGenerating = false;
                         ui.input.disabled = false;
                         ui.sendBtn.disabled = false;
                         ui.input.focus();
-                        messages.push({ role: 'user', content: text });
-                        messages.push({ role: 'assistant', content: accumulatedText });
-                        updatePipelineBadge("Completado en Clúster");
-                        
-                        // Resetear monitores
-                        updateMonitorState('local', 'ready', 'Local: Listo');
-                        connections.forEach(conn => updateMonitorState(conn.peer, 'ready', 'Acelerador: Listo'));
-                        return;
+                        updatePipelineBadge("Completado");
+                        worker.removeEventListener('message', localHandler);
                     }
+                }
+            };
+            worker.addEventListener('message', localHandler);
 
-                    const isLocalTurn = currentRenderingBlock === 0;
-                    const nodeKey = isLocalTurn ? 'local' : connections[currentRenderingBlock - 1].peer;
-                    
-                    if (isLocalTurn) {
-                        updatePipelineBadge("Streaming: Computado por dispositivo principal");
-                    } else {
-                        updatePipelineBadge(`Streaming: Computado por dispositivo acelerador ${currentRenderingBlock} (${nodeKey.substring(0,6)})`);
-                    }
-
-                    // Si el nodo actual ya tiene texto generado o está escribiendo, lo imprimimos
-                    const nodeText = activeBuffers[nodeKey];
-                    if (nodeText && nodeText.length > 0) {
-                        // Concatenar el flujo al texto general acumulado en la pantalla
-                        currentBotMessageDiv.innerHTML = marked.parse(accumulatedText + nodeText);
-                        smartScroll();
-                    }
-
-                    // Si el nodo de este bloque ya terminó del todo de generar en segundo plano, fijamos su texto y pasamos al siguiente buffer
-                    if (completedNodes[nodeKey] === true) {
-                        accumulatedText += activeBuffers[nodeKey];
-                        
-                        // Actualizar monitor visual a listo / procesado
-                        updateMonitorState(nodeKey, 'ready', isLocalTurn ? 'Local: Completado' : 'Acelerador: Bloque Listo');
-                        
-                        currentRenderingBlock++;
-                        streamUnifiedResult(); // Relevo inmediato de buffer (Handover instantáneo de 0ms)
-                    } else {
-                        // Si el nodo sigue computando en segundo plano, nos quedamos esperando sus nuevos tokens
-                        setTimeout(streamUnifiedResult, 100); 
-                    }
-                };
-
-                // --- 1. Disparar Cómputo Local ---
-                const localId = `local-cluster`;
-                const localHandler = (e) => {
-                    const d = e.data;
-                    if (d.taskIndex === localId) {
-                        if (d.type === 'update') {
-                            activeBuffers['local'] += d.text;
-                        } else if (d.type === 'complete') {
-                            completedNodes['local'] = true;
-                            worker.removeEventListener('message', localHandler);
-                        }
-                    }
-                };
-                worker.addEventListener('message', localHandler);
-
-                worker.postMessage({
-                    type: 'generate',
-                    messages: [...messages, { role: 'user', content: promptsParaNodos[0].context }],
-                    temperature: tempValue,
-                    max_new_tokens: 150, // Fragmentos compactos y precisos por nodo
-                    taskIndex: localId
-                });
-
-                // --- 2. Disparar Cómputo de los Aceleradores en Paralelo (WebRTC) ---
-                connections.forEach((conn, index) => {
-                    const pId = conn.peer;
-                    const targetId = `peer-cluster-${pId}`;
-
-                    const peerHandler = (eventData) => {
-                        if (eventData.targetId === targetId) {
-                            if (eventData.type === 'chunk-update') {
-                                activeBuffers[pId] += eventData.text;
-                                // Cambiar monitor visual si ya tiene datos en el búfer listo antes de que le toque el turno
-                                if (currentRenderingBlock < index + 1) {
-                                    updateMonitorState(pId, 'buffered', `Acelerador ${index+1}: Buffer cargado (${activeBuffers[pId].length} bytes)`);
-                                }
-                            } else if (eventData.type === 'chunk-complete') {
-                                completedNodes[pId] = true;
-                                conn.off('data', peerHandler);
-                            } else if (eventData.type === 'chunk-error') {
-                                console.warn(`Error en el nodo ${pId}. Marcado como completo para saltar al siguiente.`);
-                                completedNodes[pId] = true;
-                                conn.off('data', peerHandler);
-                            }
-                        }
-                    };
-                    conn.on('data', peerHandler);
-
-                    // Envío simultáneo del prompt mapeado
-                    conn.send({
-                        type: 'pipeline-chunk',
-                        messages: [...messages, { role: 'user', content: promptsParaNodos[index + 1].context }],
-                        temperature: tempValue,
-                        max_new_tokens: 150,
-                        targetId: targetId
-                    });
-                });
-
-                // --- 3. Iniciar el unificador y renderizador de flujos paralelos ---
-                streamUnifiedResult();
-            }
+            worker.postMessage({ 
+                type: 'generate', 
+                messages: messages,
+                temperature: tempValue,
+                max_new_tokens: 512,
+                taskIndex: 'local-sole'
+            });
         });
 
         function updatePipelineBadge(text) {
@@ -695,7 +370,6 @@
                 ui.sendBtn.disabled = false;
                 ui.input.placeholder = "Escribe un mensaje...";
                 ui.newChatBtn.classList.remove('hidden');
-                ui.clusterMonitor.classList.remove('hidden');
                 
                 appendMessage('bot', `Modelo local cargado con éxito. Procesando operaciones en: <strong>${data.device}</strong>.`);
             }
@@ -726,9 +400,9 @@
                 bubble.innerHTML = `
                     <div class="flex items-center justify-between border-b border-[#1a2420] pb-1.5 mb-2.5">
                         <span class="text-[10px] text-stone-500 uppercase tracking-wider">Inferencia</span>
-                        <span class="pipeline-status text-[9px] bg-[#0a0e0c] text-emerald-400 border border-[#1a2420] px-2 py-0.5 rounded-full font-mono">Iniciando clúster...</span>
+                        <span class="pipeline-status text-[9px] bg-[#0a0e0c] text-emerald-400 border border-[#1a2420] px-2 py-0.5 rounded-full font-mono">Inicializando...</span>
                     </div>
-                    <div class="markdown-body">Generando respuesta en paralelo...</div>
+                    <div class="markdown-body">Generando respuesta...</div>
                 `;
             }
 
@@ -739,10 +413,6 @@
 
             return wrapper;
         }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            initP2P();
-        });
     </script>
 </body>
 </html>
