@@ -1,128 +1,261 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quiet AI — Local WebGPU Chat</title>
+    <title>Quiet AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        ::-webkit-scrollbar { width: 5px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #1c2421; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #2f3d38; }
-        .chat-container { aspect-ratio: 16/9; max-height: 100vh; }
-        @media (max-width: 768px) { .chat-container { aspect-ratio: auto; height: 100dvh; } }
-        .markdown-body p { margin-bottom: 0.5em; }
-        .markdown-body pre { background: #141a17; padding: 0.75em; border-radius: 0.5em; overflow-x: auto; margin-bottom: 0.5em; border: 1px solid #223029; }
-        .markdown-body code { font-family: monospace; color: #a7f3d0; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        
+        /* Markdown minimalista */
+        .markdown-body p { margin-bottom: 0.75em; leading-trim: both; text-edge: cap; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        .markdown-body pre { background: #09090b; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75em; border: 1px solid #27272a; }
+        .markdown-body code { font-family: monospace; color: #e4e4e7; font-size: 0.875em; background: #18181b; padding: 0.2em 0.4em; border-radius: 0.25rem; }
+        .markdown-body pre code { background: transparent; padding: 0; color: #a1a1aa; }
+        
+        /* Animación de carga */
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .is-generating { animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
-<body class="bg-[#080b09] text-stone-200 h-screen w-screen flex items-center justify-center p-0 md:p-6 font-sans">
+<body class="bg-black text-zinc-300 h-screen w-screen flex overflow-hidden">
 
-    <!-- Contenedor Principal -->
-    <div class="chat-container w-full max-w-7xl bg-[#0e1310] shadow-2xl md:rounded-2xl flex flex-col md:flex-row overflow-hidden border border-[#1a2420]">
+    <!-- Sidebar Izquierdo -->
+    <aside class="w-full md:w-72 bg-zinc-950 border-r border-zinc-900 flex flex-col flex-shrink-0 transition-all absolute md:relative z-20 h-full" id="sidebar">
         
-        <!-- Sidebar -->
-        <div class="w-full md:w-80 bg-[#121915] border-b md:border-b-0 md:border-r border-[#1a2420] flex flex-col overflow-y-auto">
-            <div class="p-6 border-b border-[#1a2420]">
-                <span class="text-[10px] uppercase tracking-widest text-[#528c6e] font-semibold">Quiet Personal AI Assistant</span>
-                <h1 class="text-2xl font-serif text-stone-100 mt-1 flex items-center gap-2">Quiet AI</h1>
-                <p class="text-[11px] text-[#41594d] mt-1">Inferencia Local Optimizada</p>
+        <!-- Header Sidebar -->
+        <div class="p-5 border-b border-zinc-900 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-zinc-700 shadow-[0_0_10px_rgba(255,255,255,0.1)] transition-colors duration-500" id="status-indicator"></div>
+                <h1 class="text-sm font-semibold text-zinc-100 tracking-wide">Quiet AI</h1>
             </div>
-
-            <div class="p-6 flex flex-col gap-6 flex-1">
-                <!-- Selector de Modelo -->
-                <div class="flex flex-col gap-2">
-                    <label class="text-xs font-semibold tracking-wider uppercase text-stone-400">Modelo de IA</label>
-                    <select id="model-select" class="w-full bg-[#0a0e0c] border border-[#223029] text-stone-200 text-xs rounded-lg focus:ring-[#375e4a] focus:border-[#375e4a] block p-2.5 outline-none">
-                        <optgroup label="Modelos Ultra-Ligeros">
-                            <option value="HuggingFaceTB/SmolLM2-135M-Instruct">SmolLM2 135M (Muy Rápido)</option>
-                            <option value="HuggingFaceTB/SmolLM2-360M-Instruct" selected>SmolLM2 360M (Equilibrado)</option>
-                            <option value="onnx-community/Qwen2.5-0.5B-Instruct">Qwen 2.5 0.5B (Excelente Español)</option>
-                        </optgroup>
-                        <optgroup label="Modelos Avanzados">
-                            <option value="onnx-community/Llama-3.2-1B-Instruct">Llama 3.2 1B (Meta Local)</option>
-                            <option value="HuggingFaceTB/SmolLM2-1.7B-Instruct">SmolLM2 1.7B (Alto Razonamiento)</option>
-                        </optgroup>
-                        <optgroup label="Modelo Intermedio">
-                            <option value="onnx-community/LFM2-1.2B-ONNX">LFM2-1.2B (Alta Calidad)</option>
-                        </optgroup>
-                    </select>
-                </div>
-
-                <!-- Control de Temperatura -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs font-semibold tracking-wider uppercase text-stone-400">Temperatura</label>
-                        <span id="temp-val" class="text-xs text-[#528c6e] font-mono">0.0</span>
-                    </div>
-                    <input type="range" id="temp-slider" min="0.0" max="1.2" step="0.1" value="0.0" class="w-full h-1 bg-[#0a0e0c] rounded-lg appearance-none cursor-pointer accent-[#375e4a]">
-                    <span class="text-[10px] text-stone-500 leading-tight">Mantenlo en 0.0 para decodificación especulativa matemáticamente perfecta.</span>
-                </div>
-
-                <!-- Decodificación Especulativa Toggle -->
-                <div class="flex flex-col gap-2">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="speculative-chk" class="w-4 h-4 accent-[#375e4a] bg-[#0a0e0c] border-[#223029] rounded" checked>
-                        <span class="text-xs font-semibold tracking-wider uppercase text-stone-400">Decod. Especulativa</span>
-                    </label>
-                    <span class="text-[10px] text-stone-500 leading-tight">Usa un modelo de redacción rápido o N-Gram para inyectar bloques de tokens. Acelera x2-x3.</span>
-                </div>
-
-                <!-- Inicialización -->
-                <div class="flex flex-col gap-2">
-                    <button id="load-btn" class="w-full bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 transition-colors flex justify-center items-center gap-2 shadow-lg">
-                        Cargar Modelo Local
-                    </button>
-                    <div id="progress-container" class="hidden flex-col gap-2 mt-2">
-                        <div class="flex justify-between text-[10px] text-stone-400">
-                            <span id="progress-text">Inicializando...</span>
-                            <span id="progress-percent">0%</span>
-                        </div>
-                        <div class="w-full bg-[#0a0e0c] rounded-full h-1">
-                            <div id="progress-bar" class="bg-[#375e4a] h-1 rounded-full transition-all duration-300" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-auto pt-4 border-t border-[#1a2420]">
-                    <button id="new-chat-btn" class="w-full bg-[#151c19] hover:bg-[#1a2420] text-stone-300 font-medium rounded-lg text-xs px-4 py-2 transition-colors hidden">
-                        Limpiar Historial
-                    </button>
-                </div>
-            </div>
+            <span id="ram-badge" class="hidden text-[10px] bg-zinc-900 text-zinc-400 px-2 py-1 rounded-md border border-zinc-800">4GB Fix</span>
         </div>
 
-        <!-- Área de Chat -->
-        <div class="flex-1 flex flex-col bg-[#0b0e0c] relative">
-            <div id="chat-box" class="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col gap-6 scroll-smooth">
-                <div class="flex gap-4 items-start max-w-4xl">
-                    <div class="w-8 h-8 rounded-full bg-[#243d30] flex items-center justify-center flex-shrink-0 text-xs font-serif text-stone-100 shadow-md">Q</div>
-                    <div class="bg-[#121915] rounded-2xl rounded-tl-none px-5 py-3.5 text-sm text-stone-300 max-w-[85%] shadow-md border border-[#1a2420]/50 leading-relaxed">
-                        Sistema <strong>Quiet AI</strong> inicializado.
-                        <br><br>
-                        • System Prompt: <span class="text-rose-400">Desactivado</span> (Historial puro).<br>
-                        • Aceleración Especulativa: <span class="text-emerald-400">Soportada</span>.
+        <!-- Controles Sidebar -->
+        <div class="p-5 flex flex-col gap-5 flex-1 overflow-y-auto overflow-x-hidden">
+            
+            <!-- Selector Customizado -->
+            <div class="flex flex-col gap-2 relative" id="model-search-container">
+                <label class="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Modelo Local</label>
+                
+                <div class="relative">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="model-select" autocomplete="off" placeholder="Buscar modelo (Ej: Llama 3.2)..." class="w-full bg-black border border-zinc-800 text-zinc-100 text-sm rounded-md focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 block pl-9 pr-3 py-2.5 outline-none transition-all placeholder:text-zinc-600">
+                    
+                    <!-- Dropdown de resultados (Oculto por defecto) -->
+                    <div id="custom-dropdown" class="absolute left-0 right-0 top-full mt-1 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-md shadow-2xl max-h-64 overflow-y-auto z-50 hidden flex-col divide-y divide-zinc-800/50">
+                        <!-- Los resultados se inyectan mediante JS -->
                     </div>
+                </div>
+                <span id="model-count" class="text-[10px] text-zinc-600">Conectando catálogo...</span>
+            </div>
+
+            <!-- Botón Cargar -->
+            <button id="load-btn" class="w-full bg-zinc-100 hover:bg-white text-black font-medium rounded-md text-sm px-4 py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                Cargar Motor Local
+            </button>
+
+            <!-- Progreso Minimalista -->
+            <div id="progress-container" class="hidden flex-col gap-2">
+                <div class="flex justify-between text-[10px] text-zinc-500 font-mono">
+                    <span id="progress-text">Iniciando...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="w-full bg-zinc-900 rounded-full h-0.5">
+                    <div id="progress-bar" class="bg-zinc-100 h-0.5 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
 
-            <!-- Input Form -->
-            <div class="p-4 bg-[#0e1310] border-t border-[#1a2420]">
-                <form id="chat-form" class="relative flex items-center max-w-4xl mx-auto">
-                    <input type="text" id="user-input" disabled placeholder="Carga un modelo primero..." class="w-full bg-[#121a16] border border-[#223029] text-stone-100 text-sm rounded-full focus:ring-[#243d30] focus:border-[#243d30] block pl-6 pr-14 py-3.5 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner">
-                    <button type="submit" id="send-btn" disabled class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 rounded-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg">
-                        <svg class="w-4 h-4 translate-x-[1px]" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+            <!-- Ajustes Avanzados -->
+            <details class="group border border-zinc-900 rounded-md bg-black/50 overflow-hidden mt-2">
+                <summary class="text-xs font-medium text-zinc-400 cursor-pointer p-3 hover:text-zinc-200 transition-colors select-none">
+                    Configuración Avanzada
+                </summary>
+                <div class="p-3 pt-0 flex flex-col gap-4 border-t border-zinc-900/50 mt-2">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[11px] text-zinc-500">Temperatura</label>
+                            <span id="temp-val" class="text-[11px] text-zinc-300 font-mono">0.7</span>
+                        </div>
+                        <input type="range" id="temp-slider" min="0.0" max="1.0" step="0.1" value="0.7" class="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-300">
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer mt-1">
+                        <input type="checkbox" id="speculative-chk" class="w-3.5 h-3.5 accent-zinc-300 bg-black border-zinc-800 rounded">
+                        <span class="text-[11px] text-zinc-400">Aceleración Especulativa</span>
+                    </label>
+                </div>
+            </details>
+        </div>
+
+        <div class="p-5 border-t border-zinc-900 hidden" id="bottom-actions">
+            <button id="new-chat-btn" class="w-full text-zinc-400 hover:text-zinc-100 bg-transparent hover:bg-zinc-900 border border-zinc-800 font-medium rounded-md text-xs px-4 py-2.5 transition-colors">
+                Limpiar Conversación
+            </button>
+        </div>
+    </aside>
+
+    <!-- Área Principal de Chat -->
+    <main class="flex-1 flex flex-col relative h-full bg-black" id="main-area">
+        
+        <!-- Estado Vacío (Empty State) -->
+        <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-opacity duration-500">
+            <svg class="w-10 h-10 text-zinc-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+            <h2 class="text-zinc-500 text-sm font-medium">Ningún modelo cargado</h2>
+            <p class="text-zinc-700 text-xs mt-1">Selecciona uno en el panel izquierdo.</p>
+        </div>
+
+        <!-- Contenedor de Mensajes -->
+        <div id="chat-box" class="flex-1 overflow-y-auto px-4 md:px-12 pt-8 pb-32 flex flex-col gap-8 scroll-smooth z-10"></div>
+
+        <!-- Input Form Flotante -->
+        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent pt-10 pb-6 px-4 md:px-12 z-20">
+            <div class="max-w-3xl mx-auto relative">
+                <form id="chat-form" class="relative flex items-end">
+                    <textarea id="user-input" disabled rows="1" placeholder="Inicia un motor local para escribir..." class="w-full bg-zinc-900/80 backdrop-blur-md border border-zinc-800 text-zinc-100 text-sm rounded-xl focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 block pl-4 pr-12 py-3.5 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden max-h-32"></textarea>
+                    
+                    <button type="submit" id="send-btn" disabled class="absolute right-2 bottom-2 bg-zinc-100 hover:bg-white text-black rounded-lg p-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7"></path></svg>
                     </button>
                 </form>
+                <div class="text-center mt-2">
+                    <span class="text-[10px] text-zinc-600">Inferencia ejecutada 100% de forma local en tu dispositivo.</span>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Motor de Inferencia y Manejo de Decodificación Especulativa -->
+    <!-- Componente de Búsqueda UI Avanzado -->
     <script>
-        // Uso de comillas simples puras para el Worker para evitar conflictos de variables de string
+        document.addEventListener('DOMContentLoaded', async () => {
+            const input = document.getElementById('model-select');
+            const dropdown = document.getElementById('custom-dropdown');
+            const countSpan = document.getElementById('model-count');
+            
+            // Modelos recomendados manualmente por su calidad
+            const curatedModels = [
+                { id: "onnx-community/Llama-3.2-1B-Instruct", name: "Llama 3.2 (1B)", badge: "Recomendado" },
+                { id: "onnx-community/Qwen2.5-0.5B-Instruct", name: "Qwen 2.5 (0.5B)", badge: "Rápido" },
+                { id: "HuggingFaceTB/SmolLM2-360M-Instruct", name: "SmolLM2 (360M)", badge: "Equilibrado" },
+                { id: "HuggingFaceTB/SmolLM2-1.7B-Instruct", name: "SmolLM2 (1.7B)", badge: "Razonamiento" },
+                { id: "onnx-community/Phi-3.5-mini-instruct-onnx-web", name: "Phi 3.5 Mini", badge: "Premium" }
+            ];
+            
+            let allModels = [...curatedModels];
+
+            // Limpiador visual de nombres feos de repositorios
+            function cleanModelName(id) {
+                let name = id.split('/').pop();
+                name = name.replace('-Instruct', '').replace('-ONNX', '').replace('-web', '').replace('-q4f16', '');
+                return name.replace(/-/g, ' ');
+            }
+
+            // Renderizar la lista en el dropdown
+            function renderDropdown(query = '') {
+                dropdown.innerHTML = '';
+                const lowerQuery = query.toLowerCase();
+                
+                const filtered = allModels.filter(m => 
+                    m.id.toLowerCase().includes(lowerQuery) || 
+                    m.name.toLowerCase().includes(lowerQuery)
+                );
+
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = `<div class="p-3 text-xs text-zinc-500 text-center">No se encontraron modelos.</div>`;
+                    return;
+                }
+
+                filtered.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'flex flex-col p-3 hover:bg-zinc-800 cursor-pointer transition-colors';
+                    
+                    const badgeHtml = m.badge ? `<span class="text-[9px] px-1.5 py-0.5 rounded-sm border border-zinc-700 bg-zinc-900 text-zinc-300 ml-2">${m.badge}</span>` : '';
+                    
+                    item.innerHTML = `
+                        <div class="flex items-center text-sm font-medium text-zinc-200">
+                            ${m.name} ${badgeHtml}
+                        </div>
+                        <div class="text-[10px] text-zinc-500 mt-0.5 truncate">${m.id}</div>
+                    `;
+                    
+                    item.addEventListener('click', () => {
+                        input.value = m.id;
+                        dropdown.classList.add('hidden');
+                    });
+                    
+                    dropdown.appendChild(item);
+                });
+            }
+
+            // Eventos del Input para mostrar/ocultar
+            input.addEventListener('focus', () => {
+                dropdown.classList.remove('hidden');
+                renderDropdown(input.value);
+            });
+            
+            input.addEventListener('input', (e) => {
+                dropdown.classList.remove('hidden');
+                renderDropdown(e.target.value);
+            });
+
+            // Cerrar si se hace click fuera del contenedor de búsqueda
+            document.addEventListener('click', (e) => {
+                const container = document.getElementById('model-search-container');
+                if (!container.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            // Iniciar render básico
+            renderDropdown();
+
+            // Fetch en background al catálogo completo
+            try {
+                const res = await fetch('https://huggingface.co/api/models?author=onnx-community&sort=downloads&direction=-1&limit=250');
+                const models = await res.json();
+                
+                let added = 0;
+                models.forEach(m => {
+                    if (m.id.toLowerCase().includes('instruct') || m.id.toLowerCase().includes('chat')) {
+                        // Evitar duplicados
+                        if (!allModels.find(existing => existing.id === m.id)) {
+                            allModels.push({ id: m.id, name: cleanModelName(m.id) });
+                            added++;
+                        }
+                    }
+                });
+                countSpan.textContent = `Catálogo en vivo: +${added} modelos detectados.`;
+                if (!dropdown.classList.contains('hidden')) renderDropdown(input.value); // Re-renderizar si está abierto
+            } catch (err) {
+                countSpan.textContent = "Catálogo offline. Usando recomendaciones.";
+            }
+        });
+
+        // Autoresize Textarea
+        const textarea = document.getElementById('user-input');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if(this.value === '') this.style.height = 'auto';
+        });
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+
+    <!-- Motor de Inferencia WebGPU / WASM (Mantiene toda la lógica funcional robusta anterior) -->
+    <script>
         const workerCode = `
             import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js';
             
@@ -145,53 +278,53 @@
                         const optimizedSessionOptions = {
                             graphOptimizationLevel: 'all',  
                             enableCpuMemArena: true,        
-                            enableMemPattern: true          
+                            enableMemPattern: true,
+                            logSeverityLevel: 4
                         };
 
                         const modelName = data.model;
                         const useSpeculative = data.speculative;
 
-                        // RUTINA DE DEFENSA: Asignar draft_model SOLO si los tokenizadores son idénticos
                         let draftModelName = null;
                         if (useSpeculative) {
-                            if (modelName === 'HuggingFaceTB/SmolLM2-1.7B-Instruct' || modelName === 'HuggingFaceTB/SmolLM2-360M-Instruct') {
-                                draftModelName = 'HuggingFaceTB/SmolLM2-135M-Instruct';
-                            }
+                            const mLower = modelName.toLowerCase();
+                            if (mLower.includes('smollm2-1.7b') || mLower.includes('smollm2-360m')) draftModelName = 'HuggingFaceTB/SmolLM2-135M-Instruct';
+                            else if (mLower.includes('qwen2.5') && (mLower.includes('1.5b') || mLower.includes('3b'))) draftModelName = 'onnx-community/Qwen2.5-0.5B-Instruct';
+                            else if (mLower.includes('llama-3.2') && mLower.includes('3b')) draftModelName = 'onnx-community/Llama-3.2-1B-Instruct';
                         }
 
-                        // Carga flexible con Fallback WebGPU -> CPU
                         const loadPipe = async (mName, isDraft) => {
                             const label = isDraft ? 'Borrador' : 'Principal';
                             try {
-                                self.postMessage({ type: 'status', message: 'Iniciando WebGPU para ' + label + '...' });
+                                self.postMessage({ type: 'status', message: 'Iniciando WebGPU (q4f16) para ' + label });
                                 return await pipeline('text-generation', mName, {
                                     device: 'webgpu', dtype: 'q4f16',
                                     progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
                                     session_options: optimizedSessionOptions
                                 });
-                            } catch (e) {
-                                self.postMessage({ type: 'status', message: 'Iniciando CPU para ' + label + '...' });
-                                return await pipeline('text-generation', mName, {
-                                    device: 'wasm', dtype: 'q8',
-                                    progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
-                                    session_options: optimizedSessionOptions
-                                });
+                            } catch (e1) {
+                                try {
+                                    self.postMessage({ type: 'status', message: 'Reintentando WebGPU (q4) para ' + label });
+                                    return await pipeline('text-generation', mName, {
+                                        device: 'webgpu', dtype: 'q4',
+                                        progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
+                                        session_options: optimizedSessionOptions
+                                    });
+                                } catch (e2) {
+                                    self.postMessage({ type: 'status', message: 'Fallback a CPU Segura (q4) para ' + label, isCpu: true });
+                                    return await pipeline('text-generation', mName, {
+                                        device: 'wasm', dtype: 'q4', 
+                                        progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
+                                        session_options: optimizedSessionOptions
+                                    });
+                                }
                             }
                         };
 
                         generator = await loadPipe(modelName, false);
+                        if (draftModelName) draftGenerator = await loadPipe(draftModelName, true);
 
-                        if (draftModelName) {
-                            self.postMessage({ type: 'status', message: 'Cargando Motor Borrador...' });
-                            draftGenerator = await loadPipe(draftModelName, true);
-                        }
-
-                        let specModeStr = 'Desactivado';
-                        if (useSpeculative) {
-                            specModeStr = draftGenerator ? 'Draft Model (135M)' : 'Prompt Lookup (N-Gram)';
-                        }
-
-                        self.postMessage({ type: 'ready', device: 'WebGPU Nativo', specMode: specModeStr });
+                        self.postMessage({ type: 'ready' });
 
                     } catch (error) {
                         self.postMessage({ type: 'error', message: error.message });
@@ -200,46 +333,33 @@
                 } else if (data.type === 'generate') {
                     try {
                         const prompt = generator.tokenizer.apply_chat_template(data.messages, {
-                            tokenize: false,
-                            add_generation_prompt: true
+                            tokenize: false, add_generation_prompt: true
                         });
 
                         const streamer = new TextStreamer(generator.tokenizer, {
-                            skip_prompt: true,
-                            skip_special_tokens: true,
-                            callback_function: (text) => {
-                                self.postMessage({ type: 'update', text: text, taskIndex: data.taskIndex });
-                            }
+                            skip_prompt: true, skip_special_tokens: true,
+                            callback_function: (text) => self.postMessage({ type: 'update', text: text })
                         });
 
                         const useSampling = data.temperature > 0.0;
-                        
                         const generateArgs = {
-                            max_new_tokens: data.max_new_tokens || 512,
+                            max_new_tokens: 1024,
                             temperature: data.temperature,
                             top_p: useSampling ? 0.9 : undefined,
                             do_sample: useSampling,
-                            repetition_penalty: useSampling ? 1.1 : 1.0,
                             streamer: streamer
                         };
 
-                        // INYECCIÓN DE DECODIFICACIÓN ESPECULATIVA PERFECTA
-                        // Solo bajo Greedy Decoding (Temperatura 0.0) para asegurar matemáticas exactas y rendimiento máximo
                         if (data.speculative && !useSampling) {
-                            if (draftGenerator) {
-                                // Redacción por modelo diminuto auxiliar
-                                generateArgs.assistant_model = draftGenerator.model;
-                            } else {
-                                // Prompt Lookup Decoding: Proyección paralela de n-gramas del propio contexto (Cero VRAM extra)
-                                generateArgs.prompt_lookup_num_tokens = 3;
-                            }
+                            if (draftGenerator) generateArgs.assistant_model = draftGenerator.model;
+                            else generateArgs.prompt_lookup_num_tokens = 3;
                         }
 
                         await generator(prompt, generateArgs);
-                        self.postMessage({ type: 'complete', taskIndex: data.taskIndex });
+                        self.postMessage({ type: 'complete' });
 
                     } catch (error) {
-                        self.postMessage({ type: 'error', message: error.message, taskIndex: data.taskIndex });
+                        self.postMessage({ type: 'error', message: error.message });
                     }
                 }
             };
@@ -263,42 +383,33 @@
             progressBar: document.getElementById('progress-bar'),
             progressText: document.getElementById('progress-text'),
             progressPercent: document.getElementById('progress-percent'),
-            newChatBtn: document.getElementById('new-chat-btn')
+            newChatBtn: document.getElementById('new-chat-btn'),
+            emptyState: document.getElementById('empty-state'),
+            statusInd: document.getElementById('status-indicator'),
+            ramBadge: document.getElementById('ram-badge'),
+            bottomActions: document.getElementById('bottom-actions')
         };
 
-        // Arrays limpios, sin System Prompt
         let messages = []; 
         let isModelLoaded = false;
         let isGenerating = false;
         const downloadProgress = new Map();
-
         let currentBotMessageDiv = null;
-        let currentPipelineBadge = null;
 
-        ui.tempSlider.addEventListener('input', (e) => {
-            ui.tempVal.textContent = parseFloat(e.target.value).toFixed(1);
-        });
+        ui.tempSlider.addEventListener('input', (e) => ui.tempVal.textContent = parseFloat(e.target.value).toFixed(1));
 
         ui.loadBtn.addEventListener('click', () => {
+            if (!ui.modelSelect.value.trim()) return;
+            
             ui.loadBtn.disabled = true;
             ui.modelSelect.disabled = true;
-            ui.specChk.disabled = true;
-            ui.loadBtn.innerHTML = `Cargando Redes Neuronales...`;
+            ui.loadBtn.textContent = `Asignando Memoria...`;
             ui.progressContainer.classList.remove('hidden');
+            ui.statusInd.className = "w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)] transition-colors duration-500";
             downloadProgress.clear();
             
-            worker.postMessage({ 
-                type: 'load', 
-                model: ui.modelSelect.value, 
-                speculative: ui.specChk.checked 
-            });
+            worker.postMessage({ type: 'load', model: ui.modelSelect.value.trim(), speculative: ui.specChk.checked });
         });
-
-        function smartScroll() {
-            if (ui.chatBox.scrollHeight - ui.chatBox.clientHeight - ui.chatBox.scrollTop < 120) {
-                ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
-            }
-        }
 
         ui.form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -309,66 +420,53 @@
 
             appendMessage('user', text);
             ui.input.value = '';
+            ui.input.style.height = 'auto';
             ui.input.disabled = true;
             ui.sendBtn.disabled = true;
             isGenerating = true;
+            ui.statusInd.classList.add('is-generating');
 
             const botWrapper = appendMessage('bot-live', '');
             currentBotMessageDiv = botWrapper.querySelector('.markdown-body');
-            currentPipelineBadge = botWrapper.querySelector('.pipeline-status');
-
-            const tempValue = parseFloat(ui.tempSlider.value);
-            const isSpec = ui.specChk.checked;
 
             let currentMarkdownText = "";
             messages.push({ role: 'user', content: text });
             
-            updatePipelineBadge(isSpec && tempValue === 0.0 ? "Aceleración Especulativa" : "Procesando Local");
+            const tempValue = parseFloat(ui.tempSlider.value);
+            const isSpec = ui.specChk.checked;
 
             const localHandler = (e) => {
                 const d = e.data;
-                if (d.taskIndex === 'local-sole') {
-                    if (d.type === 'update') {
-                        currentMarkdownText += d.text;
-                        currentBotMessageDiv.innerHTML = marked.parse(currentMarkdownText);
-                        smartScroll();
-                    } else if (d.type === 'complete') {
-                        messages.push({ role: 'assistant', content: currentMarkdownText });
-                        isGenerating = false;
-                        ui.input.disabled = false;
-                        ui.sendBtn.disabled = false;
-                        ui.input.focus();
-                        updatePipelineBadge("Completado");
-                        worker.removeEventListener('message', localHandler);
-                    } else if (d.type === 'error') {
-                        currentBotMessageDiv.innerHTML = `<span class="text-red-400">Error: ${d.message}</span>`;
-                        isGenerating = false;
-                        ui.input.disabled = false;
-                        ui.sendBtn.disabled = false;
-                        worker.removeEventListener('message', localHandler);
-                    }
+                if (d.type === 'update') {
+                    currentMarkdownText += d.text;
+                    currentBotMessageDiv.innerHTML = marked.parse(currentMarkdownText);
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else if (d.type === 'complete') {
+                    messages.push({ role: 'assistant', content: currentMarkdownText });
+                    isGenerating = false;
+                    ui.input.disabled = false;
+                    ui.sendBtn.disabled = false;
+                    ui.input.focus();
+                    ui.statusInd.classList.remove('is-generating');
+                    worker.removeEventListener('message', localHandler);
+                } else if (d.type === 'error') {
+                    currentBotMessageDiv.innerHTML = `<span class="text-red-400">Error: ${d.message}</span>`;
+                    isGenerating = false;
+                    ui.input.disabled = false;
+                    ui.sendBtn.disabled = false;
+                    ui.statusInd.classList.remove('is-generating');
+                    worker.removeEventListener('message', localHandler);
                 }
             };
+            
             worker.addEventListener('message', localHandler);
-
-            worker.postMessage({ 
-                type: 'generate', 
-                messages: messages,
-                temperature: tempValue,
-                max_new_tokens: 1024,
-                speculative: isSpec,
-                taskIndex: 'local-sole'
-            });
+            worker.postMessage({ type: 'generate', messages: messages, temperature: tempValue, speculative: isSpec });
         });
-
-        function updatePipelineBadge(text) {
-            if (currentPipelineBadge) currentPipelineBadge.textContent = text;
-        }
 
         ui.newChatBtn.addEventListener('click', () => {
             messages = [];
             ui.chatBox.innerHTML = '';
-            appendMessage('bot', 'Historial limpio y vaciado.');
+            ui.input.focus();
         });
 
         worker.addEventListener('message', (e) => {
@@ -376,15 +474,14 @@
 
             if (data.type === 'status') {
                 ui.progressText.textContent = data.message;
+                if(data.isCpu) ui.ramBadge.classList.remove('hidden');
             }
             else if (data.type === 'progress') {
                 const file = data.data;
                 if (file.status === 'progress' || file.status === 'init') {
-                    downloadProgress.set(file.file, file); // Maneja ambos modelos nativamente
+                    downloadProgress.set(file.file, file);
                     let loaded = 0, total = 0;
-                    downloadProgress.forEach(p => {
-                        if (p.total) { loaded += p.loaded; total += p.total; }
-                    });
+                    downloadProgress.forEach(p => { if (p.total) { loaded += p.loaded; total += p.total; } });
                     
                     if (total > 0) {
                         const percent = Math.min(100, Math.round((loaded / total) * 100));
@@ -392,58 +489,59 @@
                         ui.progressPercent.textContent = percent + '%';
                     }
                 } else if (file.status === 'ready') {
-                    ui.progressText.textContent = `Volcando a memoria Caché...`;
+                    ui.progressText.textContent = `Compilando Caché...`;
                 }
             }
             else if (data.type === 'ready') {
                 isModelLoaded = true;
-                ui.loadBtn.innerHTML = `Sistemas en Línea`;
-                ui.loadBtn.className = "w-full bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 cursor-default shadow-md";
+                ui.loadBtn.textContent = `Modelo en Línea`;
+                ui.loadBtn.className = "w-full bg-zinc-900 text-zinc-500 font-medium rounded-md text-sm px-4 py-2.5 cursor-default border border-zinc-800";
                 ui.progressContainer.classList.add('hidden');
                 ui.input.disabled = false;
                 ui.sendBtn.disabled = false;
-                ui.input.placeholder = "Escribe tu mensaje...";
-                ui.newChatBtn.classList.remove('hidden');
-                
-                let specInfo = data.specMode !== 'Desactivado' 
-                    ? `<br><span class="text-[#528c6e] font-medium mt-1 inline-block">✦ Especulación Activa: ${data.specMode}</span>` 
-                    : '';
-
-                appendMessage('bot', `Modelo listo. Motores asegurados. ${specInfo}`);
+                ui.input.placeholder = "Escribe un mensaje al motor local...";
+                ui.emptyState.style.opacity = '0';
+                ui.bottomActions.classList.remove('hidden');
+                ui.statusInd.className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-colors duration-500";
+                ui.input.focus();
+            }
+            else if (data.type === 'error' && !isGenerating) {
+                ui.loadBtn.disabled = false;
+                ui.modelSelect.disabled = false;
+                ui.loadBtn.textContent = `Reintentar`;
+                ui.progressContainer.classList.add('hidden');
+                ui.statusInd.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)] transition-colors duration-500";
+                alert("Error: " + data.message);
             }
         });
 
         function appendMessage(role, text) {
             const wrapper = document.createElement('div');
-            wrapper.className = `flex gap-4 items-start ${role === 'user' ? 'flex-row-reverse' : ''} max-w-4xl relative`;
+            wrapper.className = `max-w-3xl w-full mx-auto flex gap-4 items-start`;
             
             const avatar = document.createElement('div');
-            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold shadow-md ${role === 'user' ? 'bg-[#3b5247]' : 'bg-[#243d30]'}`;
-            avatar.textContent = role === 'user' ? 'Tú' : 'IA';
+            avatar.className = `w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-semibold select-none ${role === 'user' ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-black'}`;
+            avatar.textContent = role === 'user' ? 'Tú' : 'AI';
             
+            const contentBox = document.createElement('div');
+            contentBox.className = `flex-1 min-w-0 pt-1`;
+            
+            const nameLabel = document.createElement('div');
+            nameLabel.className = 'text-xs font-medium text-zinc-500 mb-1 select-none';
+            nameLabel.textContent = role === 'user' ? 'Tú' : 'Local Motor';
+            contentBox.appendChild(nameLabel);
+
             const bubble = document.createElement('div');
-            bubble.className = `markdown-body rounded-2xl px-5 py-3.5 text-sm max-w-[85%] shadow-md leading-relaxed border flex flex-col ${
-                role === 'user' 
-                ? 'bg-[#1e2a24] text-white rounded-tr-none border-[#2d4d3c]/30' 
-                : 'bg-[#121915] text-stone-300 rounded-tl-none border-[#1a2420]/50'
-            }`;
+            bubble.className = `markdown-body text-sm text-zinc-300 leading-relaxed`;
             
             if (role === 'user') bubble.textContent = text; 
-            else if (role === 'bot') bubble.innerHTML = marked.parse(text); 
-            else if (role === 'bot-live') {
-                bubble.innerHTML = `
-                    <div class="flex items-center justify-between border-b border-[#1a2420] pb-1.5 mb-2.5">
-                        <span class="text-[10px] text-stone-500 uppercase tracking-wider">Inferencia</span>
-                        <span class="pipeline-status text-[9px] bg-[#0a0e0c] text-emerald-400 border border-[#1a2420] px-2 py-0.5 rounded-full font-mono">Generando...</span>
-                    </div>
-                    <div class="markdown-body"></div>
-                `;
-            }
+            else if (role === 'bot-live') bubble.innerHTML = `<span class="inline-block w-1.5 h-4 bg-zinc-500 animate-pulse"></span>`;
 
+            contentBox.appendChild(bubble);
             wrapper.appendChild(avatar);
-            wrapper.appendChild(bubble);
+            wrapper.appendChild(contentBox);
             ui.chatBox.appendChild(wrapper);
-            ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
             return wrapper;
         }
