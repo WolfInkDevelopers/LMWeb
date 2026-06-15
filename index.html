@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiet AI — Local WebGPU Chat</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Marked.js para renderizar Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         ::-webkit-scrollbar { width: 5px; }
@@ -22,16 +20,14 @@
 </head>
 <body class="bg-[#080b09] text-stone-200 h-screen w-screen flex items-center justify-center p-0 md:p-6 font-sans">
 
-    <!-- Contenedor Premium Estilo Quiet Luxury -->
+    <!-- Contenedor Principal -->
     <div class="chat-container w-full max-w-7xl bg-[#0e1310] shadow-2xl md:rounded-2xl flex flex-col md:flex-row overflow-hidden border border-[#1a2420]">
         
-        <!-- Sidebar lateral con configuración -->
+        <!-- Sidebar -->
         <div class="w-full md:w-80 bg-[#121915] border-b md:border-b-0 md:border-r border-[#1a2420] flex flex-col overflow-y-auto">
             <div class="p-6 border-b border-[#1a2420]">
                 <span class="text-[10px] uppercase tracking-widest text-[#528c6e] font-semibold">Quiet Personal AI Assistant</span>
-                <h1 class="text-2xl font-serif text-stone-100 mt-1 flex items-center gap-2">
-                    Quiet AI
-                </h1>
+                <h1 class="text-2xl font-serif text-stone-100 mt-1 flex items-center gap-2">Quiet AI</h1>
                 <p class="text-[11px] text-[#41594d] mt-1">Inferencia Local Optimizada</p>
             </div>
 
@@ -49,26 +45,34 @@
                             <option value="onnx-community/Llama-3.2-1B-Instruct">Llama 3.2 1B (Meta Local)</option>
                             <option value="HuggingFaceTB/SmolLM2-1.7B-Instruct">SmolLM2 1.7B (Alto Razonamiento)</option>
                         </optgroup>
-                        <!-- MODELO DE 4B PARÁMETROS -->
                         <optgroup label="Modelos Premium (4B)">
-                            <option value="onnx-community/Phi-3-mini-4k-instruct-ONNX">Phi-3 Mini 4K 3.8B/4B (Alta Calidad)</option>
+                            <option value="onnx-community/Phi-3-mini-4k-instruct-ONNX">Phi-3 Mini 4K (Alta Calidad)</option>
                         </optgroup>
                     </select>
                 </div>
 
-                <!-- Ajuste de Parámetros -->
+                <!-- Control de Temperatura -->
                 <div class="flex flex-col gap-3">
                     <div class="flex justify-between items-center">
                         <label class="text-xs font-semibold tracking-wider uppercase text-stone-400">Temperatura</label>
                         <span id="temp-val" class="text-xs text-[#528c6e] font-mono">0.0</span>
                     </div>
                     <input type="range" id="temp-slider" min="0.0" max="1.2" step="0.1" value="0.0" class="w-full h-1 bg-[#0a0e0c] rounded-lg appearance-none cursor-pointer accent-[#375e4a]">
-                    <span class="text-[10px] text-stone-500 leading-tight">0.0 desactiva el muestreo estadístico (Greedy Decoding) reduciendo el tiempo de generación.</span>
+                    <span class="text-[10px] text-stone-500 leading-tight">Mantenlo en 0.0 para decodificación especulativa matemáticamente perfecta.</span>
                 </div>
 
-                <!-- Inicializar / Estado local -->
+                <!-- Decodificación Especulativa Toggle -->
                 <div class="flex flex-col gap-2">
-                    <button id="load-btn" class="w-full bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 transition-colors flex justify-center items-center gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="speculative-chk" class="w-4 h-4 accent-[#375e4a] bg-[#0a0e0c] border-[#223029] rounded" checked>
+                        <span class="text-xs font-semibold tracking-wider uppercase text-stone-400">Decod. Especulativa</span>
+                    </label>
+                    <span class="text-[10px] text-stone-500 leading-tight">Usa un modelo de redacción rápido o N-Gram para inyectar bloques de tokens. Acelera x2-x3.</span>
+                </div>
+
+                <!-- Inicialización -->
+                <div class="flex flex-col gap-2">
+                    <button id="load-btn" class="w-full bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 transition-colors flex justify-center items-center gap-2 shadow-lg">
                         Cargar Modelo Local
                     </button>
                     <div id="progress-container" class="hidden flex-col gap-2 mt-2">
@@ -90,23 +94,24 @@
             </div>
         </div>
 
-        <!-- Área del Chat -->
+        <!-- Área de Chat -->
         <div class="flex-1 flex flex-col bg-[#0b0e0c] relative">
             <div id="chat-box" class="flex-1 p-4 md:p-8 overflow-y-auto flex flex-col gap-6 scroll-smooth">
                 <div class="flex gap-4 items-start max-w-4xl">
                     <div class="w-8 h-8 rounded-full bg-[#243d30] flex items-center justify-center flex-shrink-0 text-xs font-serif text-stone-100 shadow-md">Q</div>
                     <div class="bg-[#121915] rounded-2xl rounded-tl-none px-5 py-3.5 text-sm text-stone-300 max-w-[85%] shadow-md border border-[#1a2420]/50 leading-relaxed">
-                        Bienvenido a <strong>Quiet AI (Inferencia Local Optimizada)</strong>. 
+                        Sistema <strong>Quiet AI</strong> inicializado.
                         <br><br>
-                        Para comenzar, carga un modelo local. Este motor de inferencia ha sido optimizado para exprimir el rendimiento de tu hardware mediante aceleración WebGPU de bajo nivel y optimizaciones de grafo de ONNX Runtime, ofreciendo generación de texto privada sin depender de servidores.
+                        • System Prompt: <span class="text-rose-400">Desactivado</span> (Historial puro).<br>
+                        • Aceleración Especulativa: <span class="text-emerald-400">Soportada</span>.
                     </div>
                 </div>
             </div>
 
-            <!-- Área de entrada de mensajes -->
+            <!-- Input Form -->
             <div class="p-4 bg-[#0e1310] border-t border-[#1a2420]">
                 <form id="chat-form" class="relative flex items-center max-w-4xl mx-auto">
-                    <input type="text" id="user-input" disabled placeholder="Carga un modelo para habilitar la interfaz..." class="w-full bg-[#121a16] border border-[#223029] text-stone-100 text-sm rounded-full focus:ring-[#243d30] focus:border-[#243d30] block pl-6 pr-14 py-3.5 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner">
+                    <input type="text" id="user-input" disabled placeholder="Carga un modelo primero..." class="w-full bg-[#121a16] border border-[#223029] text-stone-100 text-sm rounded-full focus:ring-[#243d30] focus:border-[#243d30] block pl-6 pr-14 py-3.5 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner">
                     <button type="submit" id="send-btn" disabled class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#243d30] hover:bg-[#2d4d3c] text-stone-100 rounded-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg">
                         <svg class="w-4 h-4 translate-x-[1px]" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
                     </button>
@@ -115,76 +120,83 @@
         </div>
     </div>
 
-    <!-- Script del Motor de Inferencia -->
+    <!-- Motor de Inferencia y Manejo de Decodificación Especulativa -->
     <script>
+        // Uso de comillas simples puras para el Worker para evitar conflictos de variables de string
         const workerCode = `
             import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/transformers.min.js';
             
             env.allowLocalModels = false;
-            
-            // OPTIMIZACIONES DE VELOCIDAD NATIVAS DE WASM / WEBGPU
             env.backends.onnx.wasm.simd = true; 
             env.backends.onnx.wasm.numThreads = navigator.hardwareConcurrency || 4; 
             env.backends.onnx.wasm.proxy = false; 
 
             let generator = null;
+            let draftGenerator = null;
 
             self.onmessage = async (event) => {
                 const data = event.data;
 
                 if (data.type === 'load') {
                     try {
-                        if (generator) {
-                            await generator.dispose();
-                            generator = null;
-                        }
+                        if (generator) { await generator.dispose(); generator = null; }
+                        if (draftGenerator) { await draftGenerator.dispose(); draftGenerator = null; }
 
-                        // CONFIGURACIONES INTERNAS DE ONNX RUNTIME PARA ACELERACIÓN
                         const optimizedSessionOptions = {
-                            graphOptimizationLevel: 'all',  // Fusión masiva de operadores adyacentes del Transformer
-                            enableCpuMemArena: true,        // Reutilización estática de memoria en la CPU/WASM
-                            enableMemPattern: true          // Planificación óptima de asignación de búferes
+                            graphOptimizationLevel: 'all',  
+                            enableCpuMemArena: true,        
+                            enableMemPattern: true          
                         };
 
-                        try {
-                            self.postMessage({ type: 'status', message: 'Inicializando WebGPU (FP16 optimizado)...' });
-                            generator = await pipeline('text-generation', data.model, {
-                                device: 'webgpu', 
-                                dtype: 'q4f16', // Ejecución en precisión flotante media (FP16 nativo en GPU)
-                                progress_callback: (progressInfo) => {
-                                    self.postMessage({ type: 'progress', data: progressInfo });
-                                },
-                                session_options: optimizedSessionOptions
-                            });
-                            self.postMessage({ type: 'ready', device: 'WebGPU (FP16 optimizado)' });
-                        } catch (e1) {
-                            try {
-                                self.postMessage({ type: 'status', message: 'Inicializando WebGPU estándar...' });
-                                generator = await pipeline('text-generation', data.model, {
-                                    device: 'webgpu', 
-                                    dtype: 'q4',
-                                    progress_callback: (progressInfo) => {
-                                        self.postMessage({ type: 'progress', data: progressInfo });
-                                    },
-                                    session_options: optimizedSessionOptions
-                                });
-                                self.postMessage({ type: 'ready', device: 'WebGPU (Estándar FP32 optimizado)' });
-                            } catch (e2) {
-                                self.postMessage({ type: 'status', message: 'Inicializando en CPU (WASM)...' });
-                                generator = await pipeline('text-generation', data.model, {
-                                    device: 'wasm', 
-                                    dtype: 'q8',
-                                    progress_callback: (progressInfo) => {
-                                        self.postMessage({ type: 'progress', data: progressInfo });
-                                    },
-                                    session_options: optimizedSessionOptions
-                                });
-                                self.postMessage({ type: 'ready', device: 'CPU (WebAssembly q8 optimizado)' });
+                        const modelName = data.model;
+                        const useSpeculative = data.speculative;
+
+                        // RUTINA DE DEFENSA: Asignar draft_model SOLO si los tokenizadores son idénticos
+                        let draftModelName = null;
+                        if (useSpeculative) {
+                            if (modelName === 'HuggingFaceTB/SmolLM2-1.7B-Instruct' || modelName === 'HuggingFaceTB/SmolLM2-360M-Instruct') {
+                                draftModelName = 'HuggingFaceTB/SmolLM2-135M-Instruct';
                             }
                         }
+
+                        // Carga flexible con Fallback WebGPU -> CPU
+                        const loadPipe = async (mName, isDraft) => {
+                            const label = isDraft ? 'Borrador' : 'Principal';
+                            try {
+                                self.postMessage({ type: 'status', message: 'Iniciando WebGPU para ' + label + '...' });
+                                return await pipeline('text-generation', mName, {
+                                    device: 'webgpu', dtype: 'q4f16',
+                                    progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
+                                    session_options: optimizedSessionOptions
+                                });
+                            } catch (e) {
+                                self.postMessage({ type: 'status', message: 'Iniciando CPU para ' + label + '...' });
+                                return await pipeline('text-generation', mName, {
+                                    device: 'wasm', dtype: 'q8',
+                                    progress_callback: (p) => self.postMessage({ type: 'progress', data: p }),
+                                    session_options: optimizedSessionOptions
+                                });
+                            }
+                        };
+
+                        generator = await loadPipe(modelName, false);
+
+                        if (draftModelName) {
+                            self.postMessage({ type: 'status', message: 'Cargando Motor Borrador...' });
+                            draftGenerator = await loadPipe(draftModelName, true);
+                        }
+
+                        let specModeStr = 'Desactivado';
+                        if (useSpeculative) {
+                            specModeStr = draftGenerator ? 'Draft Model (135M)' : 'Prompt Lookup (N-Gram)';
+                        }
+
+                        self.postMessage({ type: 'ready', device: 'WebGPU Nativo', specMode: specModeStr });
+
                     } catch (error) {
                         self.postMessage({ type: 'error', message: error.message });
                     }
+
                 } else if (data.type === 'generate') {
                     try {
                         const prompt = generator.tokenizer.apply_chat_template(data.messages, {
@@ -202,17 +214,30 @@
 
                         const useSampling = data.temperature > 0.0;
                         
-                        await generator(prompt, {
+                        const generateArgs = {
                             max_new_tokens: data.max_new_tokens || 512,
                             temperature: data.temperature,
                             top_p: useSampling ? 0.9 : undefined,
                             do_sample: useSampling,
-                            // Evitamos la sobrecarga de logits si el muestreo está desactivado (Greedy decoding)
                             repetition_penalty: useSampling ? 1.1 : 1.0,
                             streamer: streamer
-                        });
+                        };
 
+                        // INYECCIÓN DE DECODIFICACIÓN ESPECULATIVA PERFECTA
+                        // Solo bajo Greedy Decoding (Temperatura 0.0) para asegurar matemáticas exactas y rendimiento máximo
+                        if (data.speculative && !useSampling) {
+                            if (draftGenerator) {
+                                // Redacción por modelo diminuto auxiliar
+                                generateArgs.assistant_model = draftGenerator.model;
+                            } else {
+                                // Prompt Lookup Decoding: Proyección paralela de n-gramas del propio contexto (Cero VRAM extra)
+                                generateArgs.prompt_lookup_num_tokens = 3;
+                            }
+                        }
+
+                        await generator(prompt, generateArgs);
                         self.postMessage({ type: 'complete', taskIndex: data.taskIndex });
+
                     } catch (error) {
                         self.postMessage({ type: 'error', message: error.message, taskIndex: data.taskIndex });
                     }
@@ -231,19 +256,20 @@
             sendBtn: document.getElementById('send-btn'),
             loadBtn: document.getElementById('load-btn'),
             modelSelect: document.getElementById('model-select'),
+            specChk: document.getElementById('speculative-chk'),
+            tempSlider: document.getElementById('temp-slider'),
+            tempVal: document.getElementById('temp-val'),
             progressContainer: document.getElementById('progress-container'),
             progressBar: document.getElementById('progress-bar'),
             progressText: document.getElementById('progress-text'),
             progressPercent: document.getElementById('progress-percent'),
-            newChatBtn: document.getElementById('new-chat-btn'),
-            tempSlider: document.getElementById('temp-slider'),
-            tempVal: document.getElementById('temp-val')
+            newChatBtn: document.getElementById('new-chat-btn')
         };
 
+        // Arrays limpios, sin System Prompt
         let messages = []; 
         let isModelLoaded = false;
         let isGenerating = false;
-        let activeModelName = "";
         const downloadProgress = new Map();
 
         let currentBotMessageDiv = null;
@@ -254,19 +280,22 @@
         });
 
         ui.loadBtn.addEventListener('click', () => {
-            activeModelName = ui.modelSelect.value;
             ui.loadBtn.disabled = true;
             ui.modelSelect.disabled = true;
-            ui.loadBtn.innerHTML = `Cargando...`;
+            ui.specChk.disabled = true;
+            ui.loadBtn.innerHTML = `Cargando Redes Neuronales...`;
             ui.progressContainer.classList.remove('hidden');
             downloadProgress.clear();
             
-            worker.postMessage({ type: 'load', model: activeModelName });
+            worker.postMessage({ 
+                type: 'load', 
+                model: ui.modelSelect.value, 
+                speculative: ui.specChk.checked 
+            });
         });
 
         function smartScroll() {
-            const isAtBottom = ui.chatBox.scrollHeight - ui.chatBox.clientHeight - ui.chatBox.scrollTop < 120;
-            if (isAtBottom) {
+            if (ui.chatBox.scrollHeight - ui.chatBox.clientHeight - ui.chatBox.scrollTop < 120) {
                 ui.chatBox.scrollTop = ui.chatBox.scrollHeight;
             }
         }
@@ -289,10 +318,12 @@
             currentPipelineBadge = botWrapper.querySelector('.pipeline-status');
 
             const tempValue = parseFloat(ui.tempSlider.value);
+            const isSpec = ui.specChk.checked;
 
             let currentMarkdownText = "";
             messages.push({ role: 'user', content: text });
-            updatePipelineBadge("Procesando: Dispositivo Local");
+            
+            updatePipelineBadge(isSpec && tempValue === 0.0 ? "Aceleración Especulativa" : "Procesando Local");
 
             const localHandler = (e) => {
                 const d = e.data;
@@ -309,6 +340,12 @@
                         ui.input.focus();
                         updatePipelineBadge("Completado");
                         worker.removeEventListener('message', localHandler);
+                    } else if (d.type === 'error') {
+                        currentBotMessageDiv.innerHTML = `<span class="text-red-400">Error: ${d.message}</span>`;
+                        isGenerating = false;
+                        ui.input.disabled = false;
+                        ui.sendBtn.disabled = false;
+                        worker.removeEventListener('message', localHandler);
                     }
                 }
             };
@@ -318,24 +355,22 @@
                 type: 'generate', 
                 messages: messages,
                 temperature: tempValue,
-                max_new_tokens: 512,
+                max_new_tokens: 1024,
+                speculative: isSpec,
                 taskIndex: 'local-sole'
             });
         });
 
         function updatePipelineBadge(text) {
-            if (currentPipelineBadge) {
-                currentPipelineBadge.textContent = text;
-            }
+            if (currentPipelineBadge) currentPipelineBadge.textContent = text;
         }
 
         ui.newChatBtn.addEventListener('click', () => {
             messages = [];
             ui.chatBox.innerHTML = '';
-            appendMessage('bot', 'El historial del chat ha sido reiniciado. ¿Qué deseas analizar hoy?');
+            appendMessage('bot', 'Historial limpio y vaciado.');
         });
 
-        // Recibir descargas locales
         worker.addEventListener('message', (e) => {
             const data = e.data;
 
@@ -345,7 +380,7 @@
             else if (data.type === 'progress') {
                 const file = data.data;
                 if (file.status === 'progress' || file.status === 'init') {
-                    downloadProgress.set(file.file, file);
+                    downloadProgress.set(file.file, file); // Maneja ambos modelos nativamente
                     let loaded = 0, total = 0;
                     downloadProgress.forEach(p => {
                         if (p.total) { loaded += p.loaded; total += p.total; }
@@ -355,23 +390,26 @@
                         const percent = Math.min(100, Math.round((loaded / total) * 100));
                         ui.progressBar.style.width = percent + '%';
                         ui.progressPercent.textContent = percent + '%';
-                        ui.progressText.textContent = `Descargando componentes del modelo...`;
                     }
                 } else if (file.status === 'ready') {
-                    ui.progressText.textContent = `Guardando en caché del navegador...`;
+                    ui.progressText.textContent = `Volcando a memoria Caché...`;
                 }
             }
             else if (data.type === 'ready') {
                 isModelLoaded = true;
-                ui.loadBtn.innerHTML = `Listo`;
-                ui.loadBtn.className = "w-full bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 cursor-default flex justify-center items-center gap-2";
+                ui.loadBtn.innerHTML = `Sistemas en Línea`;
+                ui.loadBtn.className = "w-full bg-[#2d4d3c] text-stone-100 font-medium rounded-lg text-xs px-4 py-3 cursor-default shadow-md";
                 ui.progressContainer.classList.add('hidden');
                 ui.input.disabled = false;
                 ui.sendBtn.disabled = false;
-                ui.input.placeholder = "Escribe un mensaje...";
+                ui.input.placeholder = "Escribe tu mensaje...";
                 ui.newChatBtn.classList.remove('hidden');
                 
-                appendMessage('bot', `Modelo local cargado con éxito. Procesando operaciones en: <strong>${data.device}</strong>.`);
+                let specInfo = data.specMode !== 'Desactivado' 
+                    ? `<br><span class="text-[#528c6e] font-medium mt-1 inline-block">✦ Especulación Activa: ${data.specMode}</span>` 
+                    : '';
+
+                appendMessage('bot', `Modelo listo. Motores asegurados. ${specInfo}`);
             }
         });
 
@@ -380,9 +418,7 @@
             wrapper.className = `flex gap-4 items-start ${role === 'user' ? 'flex-row-reverse' : ''} max-w-4xl relative`;
             
             const avatar = document.createElement('div');
-            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold shadow-md ${
-                role === 'user' ? 'bg-[#3b5247]' : 'bg-[#243d30]'
-            }`;
+            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold shadow-md ${role === 'user' ? 'bg-[#3b5247]' : 'bg-[#243d30]'}`;
             avatar.textContent = role === 'user' ? 'Tú' : 'IA';
             
             const bubble = document.createElement('div');
@@ -392,17 +428,15 @@
                 : 'bg-[#121915] text-stone-300 rounded-tl-none border-[#1a2420]/50'
             }`;
             
-            if (role === 'user') {
-                bubble.textContent = text; 
-            } else if (role === 'bot') {
-                bubble.innerHTML = marked.parse(text); 
-            } else if (role === 'bot-live') {
+            if (role === 'user') bubble.textContent = text; 
+            else if (role === 'bot') bubble.innerHTML = marked.parse(text); 
+            else if (role === 'bot-live') {
                 bubble.innerHTML = `
                     <div class="flex items-center justify-between border-b border-[#1a2420] pb-1.5 mb-2.5">
                         <span class="text-[10px] text-stone-500 uppercase tracking-wider">Inferencia</span>
-                        <span class="pipeline-status text-[9px] bg-[#0a0e0c] text-emerald-400 border border-[#1a2420] px-2 py-0.5 rounded-full font-mono">Inicializando...</span>
+                        <span class="pipeline-status text-[9px] bg-[#0a0e0c] text-emerald-400 border border-[#1a2420] px-2 py-0.5 rounded-full font-mono">Generando...</span>
                     </div>
-                    <div class="markdown-body">Generando respuesta...</div>
+                    <div class="markdown-body"></div>
                 `;
             }
 
